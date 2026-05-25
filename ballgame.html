@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>小球专注力游戏</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 10px;
+    }
+    .game-container {
+      background: #16213e;
+      border-radius: 20px;
+      padding: 20px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    h1 {
+      text-align: center;
+      color: #2ecc71;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(46,204,113,0.5);
+    }
+    .settings {
+      background: #0f3460;
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      color: #eee;
+      font-size: 0.9rem;
+    }
+    .setting-row label { flex: 1; }
+    .setting-row input[type="range"] {
+      flex: 2; margin: 0 8px; accent-color: #2ecc71;
+    }
+    .setting-row span {
+      width: 35px; text-align: center; background: #1a1a2e;
+      padding: 3px 5px; border-radius: 5px; font-weight: bold; color: #2ecc71;
+    }
+    .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+    button {
+      background: #2ecc71; border: none; color: white; font-weight: bold;
+      padding: 12px 0; border-radius: 10px; font-size: 1rem; cursor: pointer;
+      flex: 1 1 auto; min-width: 80px; transition: all 0.2s;
+      box-shadow: 0 4px 10px rgba(46,204,113,0.3);
+    }
+    button:active { transform: scale(0.96); opacity: 0.9; }
+    button:disabled { background: #555; box-shadow: none; cursor: not-allowed; }
+    .canvas-wrapper {
+      position: relative; width: 100%; aspect-ratio: 1/1;
+      background: #0f3460; border-radius: 15px; overflow: hidden;
+      margin-bottom: 15px; box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+    .easter-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); display: none; justify-content: center;
+      align-items: center; text-align: center; color: #fff; font-size: 1.3rem;
+      padding: 30px; border-radius: 15px; z-index: 10; flex-direction: column;
+      backdrop-filter: blur(4px);
+    }
+    .easter-overlay .typewriter {
+      font-family: 'Courier New', monospace; font-weight: bold;
+      line-height: 1.6; word-break: break-word;
+    }
+    .info-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 15px; color: #ccc; font-size: 0.9rem;
+    }
+    .timer { font-size: 1.5rem; font-weight: bold; color: #2ecc71; }
+    .status-text {
+      background: #0f3460; padding: 8px 15px; border-radius: 8px;
+      color: #ffd700; flex: 1; margin-right: 10px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .share-area {
+      background: #0f3460; border-radius: 15px; padding: 15px;
+      margin-bottom: 15px; color: #eee; display: none; text-align: center;
+    }
+    .share-area.show { display: block; }
+    .share-text {
+      background: #1a1a2e; padding: 10px; border-radius: 8px;
+      word-break: break-all; margin: 10px 0; font-size: 0.85rem; color: #ccc;
+    }
+    .copy-btn { background: #2ecc71; padding: 8px 20px; font-size: 0.9rem; }
+    .records {
+      background: #0f3460; border-radius: 15px; padding: 15px;
+      color: #ccc; max-height: 180px; overflow-y: auto;
+    }
+    .records h3 { color: #2ecc71; margin-bottom: 10px; }
+    .record-item {
+      font-size: 0.8rem; padding: 5px 0; border-bottom: 1px solid #16213e;
+      display: flex; justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+<div class="game-container">
+  <h1>🟢 小球专注力游戏</h1>
+
+  <div class="settings">
+    <div class="setting-row">
+      <label>生成小球数量</label>
+      <input type="range" id="totalBallsRange" min="10" max="20" value="14">
+      <span id="totalBallsValue">14</span>
+    </div>
+    <div class="setting-row">
+      <label>追踪小球数量</label>
+      <input type="range" id="trackBallsRange" min="1" max="10" value="3">
+      <span id="trackBallsValue">3</span>
+    </div>
+    <div class="setting-row">
+      <label>游戏时间(秒)</label>
+      <input type="range" id="timeRange" min="10" max="30" value="20">
+      <span id="timeValue">20</span>
+    </div>
+    <div class="setting-row">
+      <label>移动速度</label>
+      <input type="range" id="speedRange" min="1" max="10" value="5">
+      <span id="speedValue">5</span>
+    </div>
+    <div class="setting-row">
+      <label>碰撞加速</label>
+      <input type="range" id="boostRange" min="1" max="10" value="3">
+      <span id="boostValue">3</span>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button id="btnGenerate">生成小球</button>
+    <button id="btnStart" disabled>开始游戏</button>
+    <button id="btnSubmit" disabled>提交答案</button>
+  </div>
+
+  <div class="info-bar">
+    <span class="status-text" id="statusText">等待开始...</span>
+    <span class="timer" id="timerDisplay">⏱ 20s</span>
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas id="gameCanvas"></canvas>
+    <div class="easter-overlay" id="easterOverlay">
+      <div class="typewriter" id="easterText"></div>
+    </div>
+  </div>
+
+  <div class="share-area" id="shareArea">
+    <p>📤 分享成绩给朋友</p>
+    <div class="share-text" id="shareText"></div>
+    <button class="copy-btn" id="btnCopy">复制分享内容</button>
+    <p style="font-size:0.7rem; color:#aaa; margin-top:5px;">(如无法复制，请长按上方文字手动复制)</p>
+  </div>
+
+  <div class="records" id="recordsPanel">
+    <h3>📋 成绩记录</h3>
+    <div id="recordsList">暂无成绩记录</div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // DOM 元素
+    const totalBallsRange = document.getElementById('totalBallsRange');
+    const totalBallsValue = document.getElementById('totalBallsValue');
+    const trackBallsRange = document.getElementById('trackBallsRange');
+    const trackBallsValue = document.getElementById('trackBallsValue');
+    const timeRange = document.getElementById('timeRange');
+    const timeValue = document.getElementById('timeValue');
+    const speedRange = document.getElementById('speedRange');
+    const speedValue = document.getElementById('speedValue');
+    const boostRange = document.getElementById('boostRange');
+    const boostValue = document.getElementById('boostValue');
+    const btnGenerate = document.getElementById('btnGenerate');
+    const btnStart = document.getElementById('btnStart');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const statusText = document.getElementById('statusText');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const shareArea = document.getElementById('shareArea');
+    const shareText = document.getElementById('shareText');
+    const btnCopy = document.getElementById('btnCopy');
+    const recordsList = document.getElementById('recordsList');
+    const easterOverlay = document.getElementById('easterOverlay');
+    const easterText = document.getElementById('easterText');
+
+    // 常量
+    const BALL_RADIUS = 18;
+    const LOGIC_SIZE = 400;
+    const STORAGE_KEY = 'zhuiqiu_records';
+    const STREAK_CORRECT_KEY = 'zhuiqiu_streak_correct';
+    const STREAK_WRONG_KEY = 'zhuiqiu_streak_wrong';
+    const NORMAL_COLOR = '#2ecc71';
+    const TRACK_COLOR = '#ffd700';
+    const WRONG_COLOR = '#e74c3c';
+
+    // 状态变量
+    let balls = [];
+    let totalBalls = 14;
+    let trackCount = 3;
+    let gameTime = 20;
+    let trackIndices = [];
+    let selectedIndices = new Set();
+    let gameState = 'idle';
+    let timerId = null;
+    let animFrameId = null;
+    let remainingSeconds = 0;
+    let canvasScale = 1;
+
+    let MIN_SPEED = 1.5;
+    let MAX_SPEED = 3.5;
+    let COLLISION_BOOST = 1.03;
+
+    // 彩蛋文字库
+    const inspireTexts = [
+      "你的专注力超凡脱俗！", "火眼金睛，无人能及！", "你就是追踪大师！",
+      "记忆力与观察力的完美结合！", "这么强的动态视力，简直是超级英雄！",
+      "连对连捷，势不可挡！", "目光如炬，明察秋毫！", "每一次选择都是精准的直觉！",
+      "你已开启上帝视角！", "专注力max，无人能敌！", "继续下去，你就是传说！",
+      "球球们在你面前无所遁形！", "简直像开了写轮眼！", "太厉害了，建议直接去参加最强大脑！"
+    ];
+    const mockTexts = [
+      "眼睛是不是不够用啦？", "看来你需要多吃点胡萝卜！", "小球的轨迹你都忘了吗？",
+      "专注力有待提高哦！", "是不是走神了？再来一局吧！", "小球们表示很失望……",
+      "这都能选错？重新来过！", "你的动态视力需要充电了！", "别灰心，失败是成功之母……",
+      "也许你需要一杯咖啡提提神。", "继续加油，你会进步的！", "看来今天小球们比较调皮。"
+    ];
+
+    let streakCorrect = parseInt(localStorage.getItem(STREAK_CORRECT_KEY) || '0');
+    let streakWrong = parseInt(localStorage.getItem(STREAK_WRONG_KEY) || '0');
+
+    // 辅助函数
+    function updateStatusText(text) { statusText.textContent = text; }
+    function updateSliderDisplays() {
+      totalBallsValue.textContent = totalBallsRange.value;
+      trackBallsValue.textContent = trackBallsRange.value;
+      timeValue.textContent = timeRange.value;
+      speedValue.textContent = speedRange.value;
+      boostValue.textContent = boostRange.value;
+      timerDisplay.textContent = `⏱ ${timeRange.value}s`;
+    }
+    function updateSpeedParams() {
+      const speedLevel = parseInt(speedRange.value, 10);
+      const boostLevel = parseInt(boostRange.value, 10);
+      MIN_SPEED = 0.4 + (speedLevel - 1) * 0.35;
+      MAX_SPEED = 1.2 + (speedLevel - 1) * 0.5;
+      COLLISION_BOOST = 1.0 + boostLevel * 0.015;
+    }
+    function updateButtons() {
+      btnGenerate.disabled = (gameState === 'playing');
+      btnStart.disabled = (gameState !== 'generated');
+      btnSubmit.disabled = (gameState !== 'finished');
+    }
+    function stopAllTimers() {
+      if (timerId) { clearInterval(timerId); timerId = null; }
+      if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+    }
+    function resetGame() {
+      stopAllTimers();
+      balls = [];
+      trackIndices = [];
+      selectedIndices.clear();
+      gameState = 'idle';
+      updateStatusText('等待开始...');
+      updateButtons();
+      shareArea.classList.remove('show');
+      drawCanvas();
+    }
+
+    // 生成位置
+    function generateNonOverlappingPositions(count, radius, width, height) {
+      const positions = [];
+      for (let i = 0; i < count; i++) {
+        let attempts = 0, placed = false;
+        while (attempts < 500) {
+          const x = radius + Math.random() * (width - 2 * radius);
+          const y = radius + Math.random() * (height - 2 * radius);
+          let overlap = false;
+          for (let p of positions) {
+            if (Math.hypot(x - p.x, y - p.y) < 2 * radius + 2) {
+              overlap = true; break;
+            }
+          }
+          if (!overlap) { positions.push({ x, y }); placed = true; break; }
+          attempts++;
+        }
+        if (!placed) positions.push({
+          x: radius + Math.random() * (width - 2 * radius),
+          y: radius + Math.random() * (height - 2 * radius)
+        });
+      }
+      return positions;
+    }
+
+    // 生成小球
+    function generateBalls() {
+      try {
+        stopAllTimers();
+        totalBalls = parseInt(totalBallsRange.value, 10);
+        trackCount = parseInt(trackBallsRange.value, 10);
+        gameTime = parseInt(timeRange.value, 10);
+        updateSpeedParams();
+        if (trackCount > totalBalls) { alert('追踪小球数量不能超过生成小球数量！'); return; }
+        const positions = generateNonOverlappingPositions(totalBalls, BALL_RADIUS, LOGIC_SIZE, LOGIC_SIZE);
+        const indices = Array.from({length: totalBalls}, (_, i) => i);
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        trackIndices = indices.slice(0, trackCount);
+        balls = [];
+        for (let i = 0; i < totalBalls; i++) {
+          const isTracked = trackIndices.includes(i);
+          balls.push({
+            id: i + 1, x: positions[i].x, y: positions[i].y,
+            vx: 0, vy: 0, radius: BALL_RADIUS, isTracked,
+            currentColor: isTracked ? TRACK_COLOR : NORMAL_COLOR
+          });
+        }
+        selectedIndices.clear();
+        gameState = 'generated';
+        updateStatusText(`已生成 ${totalBalls} 个球，追踪 ${trackCount} 个（黄色光晕）`);
+        timerDisplay.textContent = `⏱ ${gameTime}s`;
+        updateButtons();
+        drawCanvas();
+      } catch (e) { alert('生成失败，请刷新'); }
+    }
+
+    // 开始游戏
+    function startGame() {
+      if (gameState !== 'generated') return;
+      updateSpeedParams();
+      for (let ball of balls) {
+        ball.currentColor = NORMAL_COLOR;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = MIN_SPEED + Math.random() * (MAX_SPEED - MIN_SPEED);
+        ball.vx = Math.cos(angle) * speed;
+        ball.vy = Math.sin(angle) * speed;
+      }
+      remainingSeconds = gameTime;
+      gameState = 'playing';
+      updateStatusText('游戏中... 盯紧原来的黄色球！');
+      updateButtons();
+      timerId = setInterval(() => {
+        remainingSeconds--;
+        timerDisplay.textContent = `⏱ ${remainingSeconds}s`;
+        if (remainingSeconds <= 0) finishGame();
+      }, 1000);
+      function animate() {
+        if (gameState !== 'playing') return;
+        updatePhysics();
+        drawCanvas();
+        animFrameId = requestAnimationFrame(animate);
+      }
+      animFrameId = requestAnimationFrame(animate);
+    }
+
+    function updatePhysics() {
+      for (let ball of balls) {
+        ball.x += ball.vx; ball.y += ball.vy;
+        if (ball.x - ball.radius < 0) { ball.x = ball.radius; ball.vx *= -1; }
+        else if (ball.x + ball.radius > LOGIC_SIZE) { ball.x = LOGIC_SIZE - ball.radius; ball.vx *= -1; }
+        if (ball.y - ball.radius < 0) { ball.y = ball.radius; ball.vy *= -1; }
+        else if (ball.y + ball.radius > LOGIC_SIZE) { ball.y = LOGIC_SIZE - ball.radius; ball.vy *= -1; }
+      }
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          const a = balls[i], b = balls[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = a.radius + b.radius;
+          if (dist < minDist) {
+            const nx = dx / (dist || 0.001), ny = dy / (dist || 0.001);
+            const dvx = a.vx - b.vx, dvy = a.vy - b.vy;
+            const vn = dvx * nx + dvy * ny;
+            if (vn < 0) {
+              const impulse = 2 * vn;
+              a.vx -= impulse * nx * 0.5; a.vy -= impulse * ny * 0.5;
+              b.vx += impulse * nx * 0.5; b.vy += impulse * ny * 0.5;
+              a.vx *= COLLISION_BOOST; a.vy *= COLLISION_BOOST;
+              b.vx *= COLLISION_BOOST; b.vy *= COLLISION_BOOST;
+              const limit = (ball) => {
+                let sp = Math.hypot(ball.vx, ball.vy);
+                if (sp > MAX_SPEED) { ball.vx = (ball.vx/sp)*MAX_SPEED; ball.vy = (ball.vy/sp)*MAX_SPEED; }
+                if (sp < MIN_SPEED) { ball.vx = (ball.vx/sp)*MIN_SPEED; ball.vy = (ball.vy/sp)*MIN_SPEED; }
+              };
+              limit(a); limit(b);
+            }
+            const overlap = minDist - dist;
+            if (overlap > 0) {
+              const corrX = nx * overlap * 0.55, corrY = ny * overlap * 0.55;
+              a.x += corrX; a.y += corrY;
+              b.x -= corrX; b.y -= corrY;
+            }
+          }
+        }
+      }
+    }
+
+    function finishGame() {
+      if (gameState !== 'playing') return;
+      stopAllTimers();
+      balls.forEach(b => { b.vx = 0; b.vy = 0; });
+      remainingSeconds = 0;
+      timerDisplay.textContent = `⏱ 0s`;
+      gameState = 'finished';
+      updateStatusText('时间到！点击小球选出追踪球，然后提交');
+      updateButtons();
+      drawCanvas();
+    }
+
+    // 绘制立体小球
+    function drawBall(ball, sx, sy, sr) {
+      let base = ball.currentColor;
+      let light, dark;
+      if (base === NORMAL_COLOR) { light = '#5dde8e'; dark = '#1f8a4a'; }
+      else if (base === TRACK_COLOR) { light = '#ffe766'; dark = '#cc9900'; }
+      else if (base === WRONG_COLOR) { light = '#f05b5b'; dark = '#b33a3a'; }
+      else { light = base; dark = base; }
+      const gradient = ctx.createRadialGradient(sx - sr*0.3, sy - sr*0.3, sr*0.1, sx, sy, sr);
+      gradient.addColorStop(0, light);
+      gradient.addColorStop(0.7, dark);
+      gradient.addColorStop(1, dark);
+      ctx.beginPath();
+      ctx.arc(sx, sy, sr, 0, Math.PI*2);
+      ctx.fillStyle = gradient;
+      ctx.fill();
+    }
+
+    function drawCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) { requestAnimationFrame(drawCanvas); return; }
+      const dw = rect.width, dh = rect.height;
+      canvas.width = dw * (window.devicePixelRatio || 1);
+      canvas.height = dh * (window.devicePixelRatio || 1);
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      canvasScale = dw / LOGIC_SIZE;
+
+      ctx.clearRect(0, 0, dw, dh);
+      ctx.fillStyle = '#0f3460';
+      ctx.fillRect(0, 0, dw, dh);
+      ctx.strokeStyle = '#2ecc71';
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeRect(0, 0, dw, dh);
+
+      for (let ball of balls) {
+        const sx = ball.x * canvasScale, sy = ball.y * canvasScale, sr = ball.radius * canvasScale;
+        const shouldGlow = (gameState === 'generated' && ball.isTracked) ||
+                           (gameState === 'submitted' && (ball.currentColor === TRACK_COLOR || ball.currentColor === WRONG_COLOR));
+        ctx.shadowColor = shouldGlow ? '#ffd700' : 'transparent';
+        ctx.shadowBlur = shouldGlow ? 15 * canvasScale : 0;
+        drawBall(ball, sx, sy, sr);
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+        if (gameState === 'finished' || gameState === 'submitted') {
+          ctx.font = `bold ${Math.floor(14*canvasScale)}px "PingFang SC", "Microsoft YaHei"`;
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(ball.id, sx, sy);
+        }
+        if ((gameState === 'finished' || gameState === 'submitted') && selectedIndices.has(ball.id-1)) {
+          ctx.beginPath();
+          ctx.arc(sx, sy, sr + 4*canvasScale, 0, Math.PI*2);
+          ctx.strokeStyle = '#00ffcc';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+      }
+    }
+
+    function handleCanvasClick(e) {
+      if (gameState !== 'finished') return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = LOGIC_SIZE / rect.width, scaleY = LOGIC_SIZE / rect.height;
+      let cx, cy;
+      if (e.touches) {
+        cx = e.touches[0].clientX; cy = e.touches[0].clientY; e.preventDefault();
+      } else { cx = e.clientX; cy = e.clientY; }
+      const lx = (cx - rect.left) * scaleX, ly = (cy - rect.top) * scaleY;
+      for (let i = balls.length-1; i >= 0; i--) {
+        const b = balls[i];
+        if (Math.hypot(lx - b.x, ly - b.y) <= b.radius) {
+          const idx = b.id - 1;
+          if (selectedIndices.has(idx)) selectedIndices.delete(idx);
+          else if (selectedIndices.size < trackCount) selectedIndices.add(idx);
+          else { alert(`最多选择 ${trackCount} 个小球`); return; }
+          drawCanvas(); break;
+        }
+      }
+    }
+    canvas.addEventListener('click', handleCanvasClick);
+    canvas.addEventListener('touchstart', handleCanvasClick, { passive: false });
+
+    // 打字机效果 (消失时间改为5秒)
+    function typewriterEffect(text, callback) {
+      easterOverlay.style.display = 'flex';
+      easterText.textContent = '';
+      let index = 0;
+      const speed = 60;
+      function type() {
+        if (index < text.length) {
+          easterText.textContent += text.charAt(index);
+          index++;
+          setTimeout(type, speed + Math.random() * 30);
+        } else {
+          setTimeout(() => {
+            easterOverlay.style.display = 'none';
+            if (callback) callback();
+          }, 5000); // 5秒后消失
+        }
+      }
+      setTimeout(type, 1000); // 停留1秒后开始打字
+    }
+
+    // 检查彩蛋触发 (连对阈值改为5的倍数)
+    function checkEasterEgg(isAllCorrect, callback) {
+      if (isAllCorrect) {
+        streakCorrect++;
+        streakWrong = 0;
+      } else {
+        streakWrong++;
+        streakCorrect = 0;
+      }
+      localStorage.setItem(STREAK_CORRECT_KEY, streakCorrect);
+      localStorage.setItem(STREAK_WRONG_KEY, streakWrong);
+
+      const correctMilestones = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100];
+      const wrongMilestones = [3,6,9,12,15,18,21,24,27,30];
+      let triggeredText = null;
+      if (isAllCorrect && correctMilestones.includes(streakCorrect)) {
+        triggeredText = inspireTexts[Math.floor(Math.random() * inspireTexts.length)];
+      } else if (!isAllCorrect && wrongMilestones.includes(streakWrong)) {
+        triggeredText = mockTexts[Math.floor(Math.random() * mockTexts.length)];
+      }
+      if (triggeredText) {
+        typewriterEffect(triggeredText, callback);
+      } else {
+        callback();
+      }
+    }
+
+    // 提交答案
+    function submitAnswer() {
+      if (gameState !== 'finished') return;
+      if (selectedIndices.size !== trackCount) {
+        alert(`请选择恰好 ${trackCount} 个小球！`);
+        return;
+      }
+      const trueIds = trackIndices.map(i => i+1);
+      const selectedIds = Array.from(selectedIndices).map(i => i+1);
+      let correctCount = 0;
+      for (let ball of balls) {
+        if (trueIds.includes(ball.id)) {
+          ball.currentColor = TRACK_COLOR;
+          if (selectedIds.includes(ball.id)) correctCount++;
+        } else if (selectedIds.includes(ball.id)) {
+          ball.currentColor = WRONG_COLOR;
+        } else {
+          ball.currentColor = NORMAL_COLOR;
+        }
+      }
+      const isAllCorrect = (correctCount === trackCount);
+      gameState = 'submitted';
+      updateButtons();
+      updateStatusText(`正确 ${correctCount}/${trackCount}`);
+      saveRecord(totalBalls, trackCount, gameTime, correctCount, trackCount);
+      loadRecords();
+      drawCanvas();
+
+      const speedLevel = speedRange.value;
+      const boostLevel = boostRange.value;
+      const shareMsg = `🟢小球专注力游戏\n总球数${totalBalls} 追踪${trackCount}个 时间${gameTime}秒\n速度${speedLevel}/10 碰撞加速${boostLevel}/10\n我正确找出了 ${correctCount}/${trackCount} 个！\n来试试你的专注力吧！`;
+      shareText.textContent = shareMsg;
+
+      checkEasterEgg(isAllCorrect, () => {
+        shareArea.classList.add('show');
+      });
+    }
+
+    // 复制分享
+    btnCopy.addEventListener('click', () => {
+      const text = shareText.textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => alert('已复制分享内容！')).catch(() => alert('复制失败，请长按文字手动复制'));
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); alert('已复制！'); } catch(e) { alert('复制失败，请长按文字手动复制'); }
+        document.body.removeChild(ta);
+      }
+    });
+
+    function saveRecord(total, track, time, correct, totalTrack) {
+      const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      records.unshift({
+        date: new Date().toLocaleString(),
+        total, track, time, correct, totalTrack,
+        accuracy: Math.round((correct/totalTrack)*100)
+      });
+      if (records.length > 10) records.pop();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+
+    function loadRecords() {
+      const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      recordsList.innerHTML = records.length ? records.map(r => `
+        <div class="record-item">
+          <span>${r.date}</span>
+          <span>${r.total}球/追${r.track} ${r.time}s</span>
+          <span style="color:#2ecc71">对${r.correct}/${r.totalTrack} (${r.accuracy}%)</span>
+        </div>
+      `).join('') : '暂无成绩记录';
+    }
+
+    // 滑块事件
+    totalBallsRange.addEventListener('input', () => {
+      totalBallsValue.textContent = totalBallsRange.value;
+      trackBallsRange.max = totalBallsRange.value;
+      if (parseInt(trackBallsRange.value) > parseInt(totalBallsRange.value)) {
+        trackBallsRange.value = totalBallsRange.value;
+        trackBallsValue.textContent = totalBallsRange.value;
+      }
+    });
+    trackBallsRange.addEventListener('input', () => trackBallsValue.textContent = trackBallsRange.value);
+    timeRange.addEventListener('input', () => {
+      timeValue.textContent = timeRange.value;
+      timerDisplay.textContent = `⏱ ${timeRange.value}s`;
+    });
+    speedRange.addEventListener('input', () => speedValue.textContent = speedRange.value);
+    boostRange.addEventListener('input', () => boostValue.textContent = boostRange.value);
+
+    btnGenerate.addEventListener('click', generateBalls);
+    btnStart.addEventListener('click', startGame);
+    btnSubmit.addEventListener('click', submitAnswer);
+    window.addEventListener('resize', () => { if (balls.length) drawCanvas(); });
+
+    updateSliderDisplays();
+    loadRecords();
+    resetGame();
+    setTimeout(() => drawCanvas(), 50);
+  })();
+</script>
+</body>
+</html>
